@@ -158,7 +158,7 @@ def upload_quiz(payload: UploadQuizRequest):
     logger.info(f"Uploading quiz to platform, {env_info}")
     
     uploader = QuizUploader(api_url=payload.api_url, admin_secret=payload.admin_secret or "TBEAdmin")
-    result = uploader.upload_quiz(payload.quiz)
+    result = uploader.upload_quiz(payload.quiz, append_to_category_id=payload.append_to_category_id)
     ok = result.get("status") == "success"
     message = result.get("message", "Upload complete")
     

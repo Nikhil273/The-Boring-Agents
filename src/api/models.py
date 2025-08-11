@@ -26,6 +26,7 @@ class UploadQuizRequest(BaseModel):
     api_url: Optional[str] = None
     admin_secret: Optional[str] = Field(default="TBEAdmin")
     environment: Optional[str] = Field(None, description="Environment where request originated (local, dev, prod)")
+    append_to_category_id: Optional[str] = Field(default=None, description="If provided, append questions to this existing category instead of creating a new quiz")
 
 
 class SimpleStatus(BaseModel):

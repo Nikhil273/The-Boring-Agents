@@ -185,8 +185,12 @@ Clean and format the data appropriately."""
                 "validation_result": validation_result
             }
     
-    def upload_quiz(self, quiz_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Upload quiz to the database via API."""
+    def upload_quiz(self, quiz_data: Dict[str, Any], append_to_category_id: Optional[str] = None) -> Dict[str, Any]:
+        """Upload quiz to the database via API.
+
+        If append_to_category_id is provided, only the questions from quiz_data
+        will be appended to the existing quiz category, without altering other fields.
+        """
         console.print("[green]🚀 Uploading quiz to database...[/green]")
         category_id = quiz_data.get("categoryId")
         num_questions = len(quiz_data.get("questions", []))
@@ -202,14 +206,30 @@ Clean and format the data appropriately."""
             }
         
         try:
-            if not category_id:
+            if not category_id and not append_to_category_id:
                 return {
                     "status": "error",
-                    "message": "Missing required field: categoryId"
+                    "message": "Missing required field: categoryId (or specify append_to_category_id)"
                 }
 
+            # If explicit append target provided, override category id lookup
+            if append_to_category_id:
+                target_category_id = append_to_category_id
+                questions_only = quiz_data.get("questions", [])
+                if not questions_only:
+                    return {"status": "error", "message": "No questions to append"}
+                url = f"{self.api_url}/api/v1/quiz/{target_category_id}"
+                self.logger.info(f"POST {url} - appending {len(questions_only)} questions")
+                resp = self.session.post(url, json={"questions": questions_only}, timeout=30)
+                if resp.status_code == 200:
+                    console.print("[green]✅ Questions appended successfully![/green]")
+                    return {"status": "success", "message": "Questions appended successfully", "response": resp.json()}
+                error_msg = f"HTTP {resp.status_code}: {resp.text[:200]}"
+                console.print(f"[red]❌ Append failed: {error_msg}[/red]")
+                return {"status": "error", "message": f"Append failed: {error_msg}", "status_code": resp.status_code}
+
             # Check if quiz already exists (by categoryId)
-            existing = self._get_quiz_by_category(category_id)
+            existing = self._get_quiz_by_category(category_id) if category_id else None
             if existing is not None:
                 self.logger.info(f"Quiz for categoryId={category_id} already exists. Switching to update.")
                 return self.update_quiz(category_id, quiz_data)
